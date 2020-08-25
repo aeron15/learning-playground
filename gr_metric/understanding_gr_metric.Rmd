@@ -1,0 +1,188 @@
+---
+title: "Understanding gr metric"
+output: html_document
+---
+
+
+Understanding gr
+
+```{r}
+library(tidyverse)
+library(heatmaply)
+library(plotly)
+```
+
+
+## Definition of gr
+
+
+Is it only defined for positive values?
+
+$$gr= 2^\frac{gr_{treated}}{gr_{untreated}}-1$$
+
+```{r}
+compute_gr <- function(gr_drug_treated, gr_untreated){
+  
+  gr <- 2^(gr_drug_treated/gr_untreated) - 1 
+  return(gr)
+}
+```
+
+1 means no inhibition (the gr drug treated and untreated are the same)
+
+```{r}
+compute_gr(gr_drug_treated = -30000, gr_untreated = 1)
+```
+
+Partial growth inhibition
+
+```{r}
+compute_gr(gr_drug_treated = 1, gr_untreated = 2)
+```
+
+When the treatment leads to no growth then the gr metric is zero
+
+```{r}
+compute_gr(gr_drug_treated = 0, gr_untreated = 2)
+```
+When there is a negative gr with the drug the gr is negative
+When cells are dying at the same rate they used to divide then the gr metric is -0.5
+```{r}
+compute_gr(gr_drug_treated = -2, gr_untreated = 2)
+```
+
+What if there is stimulation of growth, then it's above 1p
+
+```{r}
+compute_gr(gr_drug_treated = 0, gr_untreated = 2)
+```
+
+## Plot curve
+
+```{r}
+f1 <- function(x){
+  x^2
+}
+
+curve(f1, from = -10, to= 10)
+```
+```{r}
+plot(f1, -10, 10)
+```
+```{r}
+ggplot(data.frame(x=c(-10,10)), aes(x=x)) +
+  stat_function(fun = f1)
+```
+
+
+## Computing 2D functions
+
+https://stackoverflow.com/questions/47879000/how-to-graph-function-with-two-variables-in-r
+
+```{r}
+gr_treated <- seq(-3, 3, by=0.1)
+gr_untreated <- c(-3, -2, -1, 1, 2, 3)
+
+computed_gr_mat <- mapply(compute_gr, list(gr_treated), gr_untreated)
+```
+
+###  Testing perspective plots
+
+https://stackoverflow.com/questions/22150235/multidimensional-2d-function-plot-in-r
+
+```{r}
+persp(gr_treated,gr_untreated,computed_gr_mat, col='blue')
+```
+
+```{r}
+par(mar=c(1,1,1,1))
+layout(matrix(1:4, nrow=2))
+s=lapply(c(0,30,60,90), function(t) persp(gr_treated,gr_untreated,computed_gr_mat, col='blue', theta=t))
+```
+
+
+```{r}
+cols <- RColorBrewer::brewer.pal(8, "Accent")
+matplot(gr_treated, computed_gr_mat, col=cols, type="l", lty=1, lwd=2, xlab="gr_treated", ylab="result")
+legend("bottomright", legend=gr_untreated, title="gr_untreated", lwd=2, col=cols)
+```
+```{r}
+image(computed_gr_mat)
+```
+
+$$gr= 2^\frac{gr_{treated}}{gr_{untreated}}-1$$
+## Visualize gr metric using ggplot
+
+```{r}
+res_df <- computed_gr_mat %>% as.data.frame()
+colnames(res_df) <- str_c("gr_untreated", gr_untreated, sep="#")
+rownames(res_df) <- str_c("gr_treated", gr_treated, sep = "#")
+
+tidy_gr_df <- res_df %>% 
+  tibble::rownames_to_column(var = "gr_treated") %>% 
+  as_tibble() %>% 
+  pivot_longer(cols= -gr_treated ,names_to = "gr_untreated", values_to = "gr") %>% 
+  mutate(gr_treated = str_remove(gr_treated, "gr_treated#"),
+         gr_untreated = str_remove(gr_untreated, "gr_untreated#"))
+```
+
+```{r, fig.width=3, fig.height=3}
+point_plot <- tidy_gr_df %>% 
+  ggplot(aes(x = gr_untreated, y= gr_treated, size= gr, color= gr)) +
+  geom_point()
+```
+
+```{r}
+plotly::ggplotly(point_plot)
+```
+
+```{r,  fig.width=3, fig.height=3}
+ # tidy_gr_df %>% 
+ #  ggplot(aes(x = gr_untreated, y= gr_treated, z= gr)) +
+ #  geom_tile()
+```
+
+```{r,  fig.width=3, fig.height=3}
+ggplot(tidy_gr_df, aes(gr_untreated, gr_treated)) +
+ geom_raster(aes(fill = gr)) +
+  scale_fill_gradientn(colours=c("yellow","red"))
+```
+
+```{r}
+tidy_gr_df %>% 
+  mutate(gr_untreated = as.factor(gr_untreated)) %>% 
+  ggplot(aes(x=gr_treated, y = gr, color = gr_untreated)) +
+  geom_hline(yintercept = 0) +
+  geom_hline(yintercept = 1) +
+  geom_hline(yintercept = -1) +
+  # geom_vline(xintercept = 0, color = "red") +
+  # geom_vline(xintercept = 1, color = "red") +
+  geom_point() +
+  # geom_vline(xintercept = 10)
+  scale_x_discrete(guide = guide_axis(check.overlap = TRUE)) +
+  theme_bw()
+  
+```
+
+```{r}
+fig <- plot_ly(
+    x = gr_treated, 
+    y = gr_untreated,
+    z = res, type = "heatmap",
+    color
+)
+
+fig
+```
+I would like 1 to be a color, 0 a different distinct color as well as -1. Then gradations from there work
+```{r}
+res_df <- res %>% as.data.frame()
+colnames(res_df) <- str_c("gr_untreated", gr_untreated, sep="#")
+rownames(res_df) <- str_c("gr_treated", gr_treated, sep = "#")
+```
+
+
+```{r}
+heatmaply(res_df)
+```
+

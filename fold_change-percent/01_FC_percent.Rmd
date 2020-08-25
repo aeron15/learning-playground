@@ -1,0 +1,76 @@
+---
+title: "Percent vs fold change"
+author: "Renan EC"
+date: "8/25/2020"
+output: html_document
+---
+
+# Quick notes on comparing fold change versus percentage
+
+A fold change FC is defined as 
+
+$$FC = \frac{y_t}{y_0}$$
+where $y_t$ is the value of the variable y at time t and $y_0$ is the variable at time zero.
+
+We can express the  change of $y_t$ with respect to $y_0$ as:
+
+$$change = y_t-y_0$$
+And when defined as percentages we get:
+
+$$
+\begin{aligned}
+y_0 \leftrightarrow 100\% \\
+y_t \leftrightarrow \frac{y_t}{y_0}*100 \%\\
+\end{aligned}
+$$
+So then we can express $y_t - y_0$  as a function of percents
+
+$$
+\begin{aligned}
+y_t - y_0 = \frac{y_t}{y_0}*100 - 100 \\
+y_t - y_0 = 100 \times [ \frac{y_t}{y_0} - 1] \\
+y_t - y_0 = 100 \times [ FC - 1] \\
+percChange = 100 \times [ FC - 1] \\
+\end{aligned}
+$$
+$$
+percChange = 100 \times [ FC * - 1] \\
+FC = \frac{percChange}{100} + 1
+$$
+
+Does this idea make sense
+
+What is a 4 fold change difference in percentage?
+
+```{r compute_fold_change}
+
+compute_fold_change <- function(yt, y0){
+  
+  FC <- yt/y0
+  return(FC)
+}
+
+```
+
+What is the mapping between FC and % change?
+
+```{r}
+compute_percent_change <- function(yt, y0){
+  
+  PC <- (yt/y0 - 1) * 100
+  
+  return(PC)
+  
+}
+```
+
+
+```{r}
+compute_fold_change(100, 25)
+compute_percent_change(100, 25)
+```
+
+```{r}
+
+```
+
