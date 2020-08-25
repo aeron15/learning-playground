@@ -5,6 +5,14 @@ date: "8/25/2020"
 output: html_document
 ---
 
+```{r, include=FALS}
+library(tidyverse)
+library(magrittr)
+library(knitr)
+library(scales)
+library(plotly)
+```
+
 # Quick notes on comparing fold change versus percentage
 
 A fold change FC is defined as 
@@ -70,7 +78,87 @@ compute_fold_change(100, 25)
 compute_percent_change(100, 25)
 ```
 
-```{r}
+## Let's create a table with values and display percent changes
 
+```{r}
+plot_data_df <- tibble(
+  y_t = seq(from = -1000, to = 1000, by = 100)
+)
+
+
+plot_data_df %<>% 
+  mutate(y_0 = 100) %>% 
+  mutate(FC = compute_fold_change(y_t, y_0),
+         PC = compute_percent_change(y_t, y_0)) 
+```
+
+```{r}
+plot_data_df %>% 
+  kable()
+```
+
+
+```{r}
+plot_data_df %>% 
+  ggplot(aes(x=FC, y= PC)) +
+  geom_point() 
+```
+## Interconverting between FC and PC
+
+Now let's learn how to interconvert between the two of them with the library scales
+
+```{r}
+p <- plot_data_df %>% 
+  pivot_longer(cols = c("FC", "PC"), names_to = "change") %>% 
+  ggplot(aes(x=y_t , y = value, color = change)) +
+  geom_point()
+
+ggplotly(p)
+```
+
+```{r}
+ plot_data_df %>% 
+  ggplot(aes(x=y_t, y=PC)) +
+  geom_point()
+```
+
+We need to define an object of type trans. We need to define a transform and inverse for labeling to work properly
+
+
+```{r}
+FC_to_PC <- function(x) (x - 1) * 100
+PC_to_FC <- function(x) (x/100) + 1
+
+percent_to_fold_change_trans <- function() trans_new(name = "percent_to_fold_change", transform = PC_to_FC, inverse = FC_to_PC)
+```
+
+```{r}
+plot_data_df %>% 
+  mutate(FC_new = PC_to_FC(PC),
+         difference = FC_new - FC) %>% 
+  pull("difference") %>% 
+  sum()
+```
+
+```{r}
+p <- plot_data_df %>% 
+  ggplot(aes(x=y_t, y=PC)) +
+  geom_point() +
+  coord_trans(y = "percent_to_fold_change")
+p
+```
+
+
+
+
+```{r}
+one_over_trans = function() trans_new(name = "one_over", transform = function(x) 1/x, inverse = function(x) x)
+```
+
+```{r}
+qplot(carat, price, data=diamonds) +
+  coord_trans(y = "one_over")
+
+# + coord_trans(x = "log10", y = "one_over")
 ```
 
